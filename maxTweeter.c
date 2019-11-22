@@ -3,8 +3,6 @@
 #include <string.h>
 
 #define LINE_MAX 1025
-#define MAP_SIZE 2048
-#define ERROR -1
 
 struct node {
 	char* name;
@@ -32,18 +30,24 @@ int get_name_location(char* header) {
 
 int main(int argc, char** argv) {
 	// Check for argument
-	if (argc != 1) return ERROR;
+	if (argc != 1) return -1;
 
 	FILE * csv = fopen(argv[1], "r");
 
 	// Check that file was opened
-	if (!csv) return ERROR;
+	if (!csv) { 
+		printf("Invalid Input Format\n");
+		return -1;
+	}
 
 	// Parse header
 	char line[LINE_MAX];
 	fgets(line, LINE_MAX, csv);
 	int name_location = get_name_location(line);
-	if (name_location == -1) return ERROR;
+	if (name_location == -1) {
+		printf("Invalid Input Format\n");
+		return -1;
+	}
 
 	// TODO Store in some data structure (linked list for now)
 	struct node* head = malloc(sizeof(struct node));
@@ -51,7 +55,10 @@ int main(int argc, char** argv) {
 	// TODO Save here
 	while (getc(csv) != EOF) {
 		fgets(line, LINE_MAX, csv);
-		if (parse_line(line) == -1) return ERROR;
+		if (parse_line(line) == -1) {
+			printf("Invalid Input Format\n");
+			return -1;
+		}
 	}
 
 	// TODO Free memory

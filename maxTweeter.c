@@ -75,9 +75,14 @@ int find_next_comma(char* str) {
 
 // Returns -1 if invalid line
 // Otherwise, counts the name
-// TODO Check if this works
 // TODO Have to account for quotations around the word
 int parse_line(char* line, struct linkedlist* list, int name_loc) {
+	if(line == NULL){
+		return -1;
+	}
+	if(strlen(line) > 1024){ //the length of line shouldn't exceed 1024
+		return -1;
+	}
 	char buf[LINE_MAX];
 	int comma_count = 0;
 	for (int i = 0; i < LINE_MAX; i++) {
@@ -95,9 +100,14 @@ int parse_line(char* line, struct linkedlist* list, int name_loc) {
 	return -1;
 }
 
-// TODO Need to ensure header is valid
 int get_name_location(char* header) {
 	// Must have "name" column
+	if(header == NULL){
+		return -1;
+	}
+	if(strlen(header) > 1024){ //the length of header shouldn't exceed 1024
+		return -1;
+	}
 	int comma_count = 0;
 	for (int i = 0; i < LINE_MAX - NAME_SIZE; i++) {
 		if (header[i] == '\0') return -1;
@@ -108,7 +118,65 @@ int get_name_location(char* header) {
 	return -1;
 }
 
-//Version4
+//check if the header is valid
+//TODO check if this works correctly
+int header_check(char* header, int isquoted[]){
+	if(header == NULL){
+		return -1;
+	}
+	int counter = 0;
+	char columns[LINE_MAX][LINE_MAX];
+	char* p;
+	char headercp[LINE_MAX+100];
+	strcpy(headercp,header);
+	p = strtok(headercp, ",");
+	if(*p == '"' && *(p + strlen(p) -1) == '"'){
+		isquoted[counter] = 1;
+	}else{
+		isquoted[counter] = 0;
+	}
+	strcpy(columns[counter], p);
+	counter++;
+
+	while(p != NULL){
+		p = strtok(NULL, ",");
+
+		if(p != NULL){
+			if(*p == '"'){
+				if(*(p+1) != '\0' && *(p + strlen(p) -1) == '"'){
+					isquoted[counter] = -1;
+				}else{
+					return -1;
+				}
+			}else{
+				isquoted[counter] = 0;
+			}
+			if(isquoted[counter] == 1 && strncmp(p,"\"\"",2) != 0){
+				char* q;
+				strcpy(q,p);
+				*(q + strlen(q) -1) = '\0';
+				q++;
+				strcpy(columns[counter],q);
+			}else{
+				strcpy(columns[counter], p);
+			}
+		}
+		counter++;
+	}
+
+	for(int i=0;i < counter; i++){
+		char column[LINE_MAX];
+		strcpy(column,columns[i]);
+		for(int j=i+1; j<counter; j++){
+			if(strcmp(column, columns[j]) == 0){
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 //sort the list
 void sortlist(struct linkedlist* list){
 	int maxvalue = 0;
@@ -125,7 +193,7 @@ void sortlist(struct linkedlist* list){
 			max = max->next;
 		}
 		int temp = current->count;
-		char* currentname;
+		char currentname[LINE_MAX];
 		strcpy(currentname, current->name);
 		current->count = prevmax->count;
 		strcpy(current->name, prevmax->name);
@@ -134,7 +202,6 @@ void sortlist(struct linkedlist* list){
 		current = current->next;
 	}
 }
-//Version4
 
 int main(int argc, char** argv) {
 
@@ -154,8 +221,16 @@ int main(int argc, char** argv) {
 	}
 
 	// Parse header
-	char line[LINE_MAX];
-	fgets(line, LINE_MAX, csv);
+	char line[LINE_MAX+100];
+	int isquoted[LINE_MAX];
+	for(int i=0;i<LINE_MAX;i++){
+		isquoted[i] = -1;
+	}
+	fgets(line, LINE_MAX + 100, csv);
+	if(header_check(line, isquoted) == -1){
+		printf("Invalid Input Format\n");
+		return -1;
+	}
 	int name_loc = get_name_location(line);
 	if (name_loc == -1) {
 		printf("Invalid Input Format\n");
@@ -164,15 +239,22 @@ int main(int argc, char** argv) {
 
 	// Store in some data structure (linked list for now)
 	struct linkedlist* list = malloc(sizeof(struct linkedlist));
+	int linecount = 1;
 
-	while (fgets(line, LINE_MAX, csv) != NULL) {
+	while (fgets(line, LINE_MAX + 100, csv) != NULL) {
 		if (parse_line(line, list, name_loc) == -1) {
 			printf("Invalid Input Format\n");
 			return -1;
 		}
+		linecount++;
 	}
 
-	//Version4
+	if(linecount > 20000){ //length of the file shouldn't exceed 20000 lines
+		printf("Invalid Input Format\n");
+		return -1;
+	}
+
+	//sort the list
 	sortlist(list);
 	struct node* current = list->head;
 	int count = 0;
@@ -182,9 +264,8 @@ int main(int argc, char** argv) {
 		current = current->next;
 		count++;
 	}
-	//Version4
 
 	linkedlist_del(list);
 	
-	return 0;
+	exit(0);
 }

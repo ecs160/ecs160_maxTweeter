@@ -75,29 +75,78 @@ int find_next_comma(char* str) {
 
 // Returns -1 if invalid line
 // Otherwise, counts the name
-// TODO Have to account for quotations around the word
-int parse_line(char* line, struct linkedlist* list, int name_loc) {
+// TODO Check if this can distinguish invalid file correctly
+int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]) {
 	if(line == NULL){
 		return -1;
 	}
 	if(strlen(line) > 1024){ //the length of line shouldn't exceed 1024
 		return -1;
 	}
+	int counter = 0;
 	char buf[LINE_MAX];
-	int comma_count = 0;
-	for (int i = 0; i < LINE_MAX; i++) {
-		if (line[i] == '\0') return -1;
-		if (comma_count == name_loc) {
-			int len = find_next_comma(line + i);
-			if (len == -1) return -1;
-			strncpy(buf, line + i, len);
-			buf[len] = '\0';
-			linkedlist_inc(list, buf);
-			return 0;
-		}
-		if (line[i] == ',') comma_count++;
+	char elements[LINE_MAX][LINE_MAX];
+	char* p;
+	p = strtok(line, ",");
+	if(*(p + strlen(p) -1) == '\n'){
+		*(p + strlen(p) -1) = '\0';
 	}
-	return -1;
+	if(isquoted[counter] == 0){
+		if(*p == '"' || *(p + strlen(p) -1) == '"'){
+			return -1;
+		}
+	}else if(isquoted[counter] == 1){
+		if(*p != '"' || *(p + strlen(p) -1) != '"'){
+			return -1;
+		}
+	}else if(isquoted[counter] == -1){
+		return -1;
+	}
+	counter++;
+
+	while(p != NULL){
+		p = strtok(NULL, ",");
+
+		if(p != NULL){
+			if(*(p + strlen(p) -1) == '\n'){
+				*(p + strlen(p) -1) = '\0';
+			}
+			if(isquoted[counter] == 0){
+				if(*p == '"' || *(p + strlen(p) -1) == '"'){
+					return -1;
+				}
+				if(counter == name_loc){
+					linkedlist_inc(list,p);
+				}
+			}else if(isquoted[counter] == 1){
+				if(*p != '"' || *(p + strlen(p) -1) != '"'){
+					return -1;
+				}
+				if(counter == name_loc){
+					*(p + strlen(p) -1) = '\0';
+					linkedlist_inc(list,p+1);
+				}
+			}else if (isquoted[counter] == -1){
+				return -1;
+			}
+		}
+		counter++;
+	}
+	return 0;
+}
+
+void insert_space(char* line){
+	for(int i=0;i<strlen(line);i++){
+		if(line[i] == ',' && line[i+1] == ','){
+			line[i+1] = '\0';
+			char* p = &line[i+2];
+			char buf[LINE_MAX];
+			strcpy(buf,p);
+			strcat(line, " ,");
+			strcat(line, buf);
+			i++;
+		}
+	}
 }
 
 int get_name_location(char* header) {
@@ -119,7 +168,7 @@ int get_name_location(char* header) {
 }
 
 //check if the header is valid
-//TODO check if this works correctly
+//TODO Check if this can distinguish invalid header correctly
 int header_check(char* header, int isquoted[]){
 	if(header == NULL){
 		return -1;
@@ -130,39 +179,67 @@ int header_check(char* header, int isquoted[]){
 	char headercp[LINE_MAX+100];
 	strcpy(headercp,header);
 	p = strtok(headercp, ",");
-	if(*p == '"' && *(p + strlen(p) -1) == '"'){
-		isquoted[counter] = 1;
+	if(*(p + strlen(p) -1) == '\n'){
+		*(p + strlen(p) -1) = '\0';
+	}
+	if(*p == '"'){
+		if(*(p+1) != '\0' && *(p + strlen(p) -1) == '"'){
+			isquoted[counter] = 1;
+		}/*else if(*(p+strlen(p) -1) == '\n' && *(p+strlen(p) -2) == '"' && strcmp(p,"\"\n") != 0){
+					isquoted[counter] = 1;
+		}*/else{
+			return -1;
+		}
 	}else{
 		isquoted[counter] = 0;
 	}
-	strcpy(columns[counter], p);
+	if(isquoted[counter] == 1 && strcmp(p,"\"\"") == 0){
+		strcpy(columns[counter], "");
+	}else if(isquoted[counter] == 1){
+		char q[LINE_MAX];
+		strcpy(q,p);
+		*(q + strlen(q) -1) = '\0';
+		strcpy(columns[counter],q+1);
+	}else{
+		strcpy(columns[counter], p);
+	}
 	counter++;
 
 	while(p != NULL){
 		p = strtok(NULL, ",");
 
 		if(p != NULL){
+			if(*(p + strlen(p) -1) == '\n'){
+				*(p + strlen(p) -1) = '\0';
+			}
 			if(*p == '"'){
 				if(*(p+1) != '\0' && *(p + strlen(p) -1) == '"'){
-					isquoted[counter] = -1;
-				}else{
+					isquoted[counter] = 1;
+				}/*else if(*(p+strlen(p) -1) == '\n' && *(p+strlen(p) -2) == '"' && strcmp(p,"\"\n") != 0){
+					isquoted[counter] = 1;
+				}*/
+				else{
 					return -1;
 				}
 			}else{
 				isquoted[counter] = 0;
 			}
-			if(isquoted[counter] == 1 && strncmp(p,"\"\"",2) != 0){
-				char* q;
+			if(isquoted[counter] == 1 && strcmp(p, "\"\"") == 0){
+				strcpy(columns[counter], "");
+			}
+			else if(isquoted[counter] == 1){
+				char q[LINE_MAX];
 				strcpy(q,p);
 				*(q + strlen(q) -1) = '\0';
-				q++;
-				strcpy(columns[counter],q);
+				strcpy(columns[counter],q+1);
 			}else{
 				strcpy(columns[counter], p);
 			}
 		}
 		counter++;
 	}
+
+	counter--;
 
 	for(int i=0;i < counter; i++){
 		char column[LINE_MAX];
@@ -227,12 +304,13 @@ int main(int argc, char** argv) {
 		isquoted[i] = -1;
 	}
 	fgets(line, LINE_MAX + 100, csv);
-	if(header_check(line, isquoted) == -1){
+	int name_loc = get_name_location(line);
+	if (name_loc == -1) {
 		printf("Invalid Input Format\n");
 		return -1;
 	}
-	int name_loc = get_name_location(line);
-	if (name_loc == -1) {
+
+	if(header_check(line, isquoted) == -1){
 		printf("Invalid Input Format\n");
 		return -1;
 	}
@@ -242,7 +320,8 @@ int main(int argc, char** argv) {
 	int linecount = 1;
 
 	while (fgets(line, LINE_MAX + 100, csv) != NULL) {
-		if (parse_line(line, list, name_loc) == -1) {
+		insert_space(line);
+		if (parse_line(line, list, name_loc, isquoted) == -1) {
 			printf("Invalid Input Format\n");
 			return -1;
 		}

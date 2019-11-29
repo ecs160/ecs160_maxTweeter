@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NUM_NAMES 10
+#define NUM_LINE_MAX 20000
 #define LINE_MAX 1024
 #define LINE_PAD 100
 
@@ -64,7 +66,11 @@ void linkedlist_del(struct linkedlist* list) {
 	free(list);
 }
 
+// Returns 1 if quoted
 int check_quoted(char* str) {
+	// If str has nothing, error
+	if (strlen(str) <= 0) return -1;
+
 	// Make sure quotes are matching
 	if (str[0] == '"' && str[1] != '\0' && str[strlen(str) - 1] == '"') return 1;
 
@@ -75,6 +81,7 @@ int check_quoted(char* str) {
 	return 0;
 }
 
+// Copies src into dest while removing quotes
 void strcpy_unquoted(char* dest, char* src, int is_quoted) {
 	if (is_quoted == 1){
 		strcpy(dest, src + 1);
@@ -85,25 +92,24 @@ void strcpy_unquoted(char* dest, char* src, int is_quoted) {
 }
 
 int check_body_inc(char* str, struct linkedlist* list, int isquoted[], int counter, int name_loc) {
+	if (counter == name_loc) {
+		// If name column, may or may not be quoted
+		char cur_name[LINE_MAX];
+		strcpy_unquoted(cur_name, str, check_quoted(str));
+		linkedlist_inc(list, str);
+		return 0;
+	}
+
 	if (isquoted[counter] == 0) {
 		// Make sure str is not quoted
 		int quoted = check_quoted(str);
-		// TODO Commented out for testing
+		// TODO Commented out for testing (is this necessary?)
 		// if (quoted != 0) return -1;
-
-		if(counter == name_loc){
-			linkedlist_inc(list,str);
-		}
 	} else if(isquoted[counter] == 1) {
 		// Make sure str is quoted as well
 		int quoted = check_quoted(str);
 		// TODO Commented out for testing
 		// if (quoted != 1) return -1;
-
-		if(counter == name_loc){
-			*(str + strlen(str) - 1) = '\0';
-			linkedlist_inc(list, str+1);
-		}
 	} else {
 		return -1;
 	}
@@ -113,7 +119,6 @@ int check_body_inc(char* str, struct linkedlist* list, int isquoted[], int count
 
 // Returns -1 if invalid line
 // Otherwise, counts the name
-// TODO Check if this can distinguish invalid file correctly
 int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]) {
 	if (line == NULL) {
 		return -1;
@@ -142,10 +147,10 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 }
 
 void insert_space(char* line){
-	for (int i = 0; i < strlen(line); i++) {
-		if (line[i] == ',' && line[i+1] == ',') {
-			line[i+1] = '\0';
-			char* p = line + i + 2;
+	for (int i = 1; i < strlen(line); i++) {
+		if (line[i-1] == ',' && line[i] == ',') {
+			line[i] = '\0';
+			char* p = line + i + 1;
 			char buf[LINE_MAX];
 			strcpy(buf,p);
 			strcat(line, " ,");
@@ -175,8 +180,7 @@ int get_name_location(char* header) {
 	return -1;
 }
 
-//check if the header is valid
-//TODO Check if this can distinguish invalid header correctly
+// check if the header is valid
 int header_check(char* header, int isquoted[]){
 	if(header == NULL){
 		return -1;
@@ -193,7 +197,6 @@ int header_check(char* header, int isquoted[]){
 
 	isquoted[counter] = check_quoted(p);
 	if (isquoted[counter] == -1) return -1;
-
 	strcpy_unquoted(columns[counter], p, isquoted[counter]);
 	counter++;
 
@@ -203,7 +206,6 @@ int header_check(char* header, int isquoted[]){
 
 		isquoted[counter] = check_quoted(p);
 		if (isquoted[counter] == -1) return -1;
-
 		strcpy_unquoted(columns[counter], p, isquoted[counter]);
 		counter++;
 	}
@@ -304,7 +306,7 @@ int main(int argc, char** argv) {
 		linecount++;
 	}
 
-	if(linecount > 20000){ //length of the file shouldn't exceed 20000 lines
+	if(linecount > NUM_LINE_MAX){ //length of the file shouldn't exceed 20000 lines
 		printf("Invalid Input Format\n");
 		return -1;
 	}
@@ -315,7 +317,7 @@ int main(int argc, char** argv) {
 	int count = 0;
 	
 	// Output the list
-	while(current != NULL && count < 10){
+	while(current != NULL && count < NUM_NAMES){
 		printf("%s: %d\n" ,current->name, current->count);
 		current = current->next;
 		count++;

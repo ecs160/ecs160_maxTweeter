@@ -13,7 +13,7 @@ struct linkedlist {
 };
 
 struct node {
-	char* name;
+	char name[LINE_MAX];
 	int count;
 	struct node* next;
 };
@@ -21,7 +21,6 @@ struct node {
 //add a new node to list
 void linkedlist_add(struct linkedlist* list, char* str) {
 	struct node* new_node = malloc(sizeof(struct node));
-	new_node->name = malloc(strlen(str));
 	strcpy(new_node->name, str);
 	new_node->count = 1;
 	new_node->next = NULL;
@@ -58,7 +57,6 @@ void linkedlist_del(struct linkedlist* list) {
 	struct node* current = list->head;
 	while (current != NULL) {
 		struct node* temp = current->next;
-		free(current->name);
 		free(current);
 		current = temp;
 	}
@@ -133,6 +131,7 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 	char* p;
 
 	p = strtok(line, ",");
+	if (p == NULL) return -1;
 	if (check_body_inc(p, list, isquoted, counter, name_loc) == -1) return -1;
 	counter++;
 
@@ -149,13 +148,19 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 void insert_space(char* line){
 	for (int i = 1; i < strlen(line); i++) {
 		if (line[i-1] == ',' && line[i] == ',') {
-			line[i] = '\0';
-			char* p = line + i + 1;
-			char buf[LINE_MAX];
-			strcpy(buf,p);
-			strcat(line, " ,");
-			strcat(line, buf);
-			i++;
+			if (i + 1 >= strlen(line)) {
+				line[i] = ' ';
+				line[i+1] = ',';
+				line[i+2] = '\0';
+			} else {
+				line[i] = '\0';
+				char* p = line + i + 1;
+				char buf[LINE_MAX];
+				strcpy(buf,p);
+				strcat(line, " ,");
+				strcat(line, buf);
+				i++;
+			}
 		}
 	}
 }
@@ -194,6 +199,7 @@ int header_check(char* header, int isquoted[]){
 	strcpy(headercp,header);
 
 	p = strtok(headercp, ",");
+	if (p == NULL) return -1;
 
 	isquoted[counter] = check_quoted(p);
 	if (isquoted[counter] == -1) return -1;
@@ -237,12 +243,12 @@ void sortlist(struct linkedlist* list){
 
 		// Swap
 		int temp = current->count;
-		char currentname[LINE_MAX];
-		strcpy(currentname, current->name);
+		char temp_name[LINE_MAX];
+		strcpy(temp_name, current->name);
 		current->count = prevmax->count;
 		strcpy(current->name, prevmax->name);
 		prevmax->count = temp;
-		strcpy(prevmax->name, currentname);
+		strcpy(prevmax->name, temp_name);
 		current = current->next;
 	}
 }

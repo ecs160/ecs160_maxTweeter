@@ -83,33 +83,32 @@ int check_quoted(char* str) {
 void strcpy_unquoted(char* dest, char* src, int is_quoted) {
 	if (is_quoted == 1){
 		strcpy(dest, src + 1);
-		dest[strlen(dest) - 2] = '\0';
+		dest[strlen(dest) - 1] = '\0';
 	} else {
 		strcpy(dest, src);
 	}
 }
 
 int check_body_inc(char* str, struct linkedlist* list, int isquoted[], int counter, int name_loc) {
-	if (counter == name_loc) {
-		// If name column, may or may not be quoted
-		char cur_name[LINE_MAX];
-		strcpy_unquoted(cur_name, str, check_quoted(str));
-		linkedlist_inc(list, str);
-		return 0;
-	}
-
 	if (isquoted[counter] == 0) {
 		// Make sure str is not quoted
 		int quoted = check_quoted(str);
 		// TODO Commented out for testing (is this necessary?)
-		// if (quoted != 0) return -1;
+		 if (quoted != 0) return -1;
 	} else if(isquoted[counter] == 1) {
 		// Make sure str is quoted as well
 		int quoted = check_quoted(str);
 		// TODO Commented out for testing
-		// if (quoted != 1) return -1;
+		 if (quoted != 1) return -1;
 	} else {
 		return -1;
+	}
+	if (counter == name_loc) {
+		// If name column, may or may not be quoted
+		char cur_name[LINE_MAX];
+		strcpy_unquoted(cur_name, str, check_quoted(str));
+		linkedlist_inc(list, cur_name);
+		return 0;
 	}
 
 	return 0;
@@ -279,6 +278,9 @@ int main(int argc, char** argv) {
 	// Parse header
 	char line[LINE_MAX+LINE_PAD];
 	int isquoted[LINE_MAX];
+	//isquoted = 1 -> quoted
+	//isquoted = 0 -> not quoted
+	//isquoted = -1 -> out of range
 	memset(isquoted, -1, LINE_MAX);
 
 	fgets(line, LINE_MAX + LINE_PAD, csv);

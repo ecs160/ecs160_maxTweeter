@@ -120,13 +120,13 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 	if (line == NULL) {
 		return -1;
 	}
-	if (strlen(line) > LINE_MAX) { //the length of line shouldn't exceed 1024
+	if (strlen(line) > 2 * LINE_MAX) { //the length of line shouldn't exceed 1024
 		return -1;
 	}
 
 	int counter = 0;
-	char buf[LINE_MAX];
-	char elements[LINE_MAX][LINE_MAX];
+	char buf[2 * LINE_MAX];
+	char elements[2 * LINE_MAX][2 * LINE_MAX];
 	char* p;
 
 	p = strtok(line, ",");
@@ -144,7 +144,10 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 	return 0;
 }
 
-void insert_space(char* line){
+int insert_space(char* line){
+	if (strlen(line) > LINE_MAX) { //the length of line shouldn't exceed 1024
+		return -1;
+	}
 	for (int i = 1; i < strlen(line); i++) {
 		if (line[i-1] == ',' && line[i] == ',') {
 			if (i + 1 >= strlen(line)) {
@@ -162,6 +165,7 @@ void insert_space(char* line){
 			}
 		}
 	}
+	return 0;
 }
 
 int get_name_location(char* header) {
@@ -306,7 +310,10 @@ int main(int argc, char** argv) {
 	// Add each line to list
 	while (fgets(line, LINE_MAX + LINE_PAD, csv) != NULL) {
 		rem_newline(line);
-		insert_space(line);
+		if(insert_space(line) == -1){
+			printf("Invalid Input Format\n");
+			return -1;
+		}
 		if (parse_line(line, list, name_loc, isquoted) == -1) {
 			printf("Invalid Input Format\n");
 			return -1;

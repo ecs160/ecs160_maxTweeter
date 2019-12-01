@@ -5,7 +5,6 @@
 #define NUM_NAMES 10
 #define NUM_LINE_MAX 20000
 #define LINE_MAX 1024
-#define LINE_PAD 100
 
 struct linkedlist {
 	struct node* head;
@@ -13,7 +12,7 @@ struct linkedlist {
 };
 
 struct node {
-	char name[LINE_MAX];
+	char name[LINE_MAX + 1];
 	int count;
 	struct node* next;
 };
@@ -66,11 +65,11 @@ void linkedlist_del(struct linkedlist* list) {
 
 // Returns 1 if quoted
 int check_quoted(char* str) {
-	// If str has nothing, error
-	if (strlen(str) <= 0) return -1;
+	// If str has nothing, not quoted
+	if (strlen(str) == 0) return 0;
 
 	// Make sure quotes are matching
-	if (str[0] == '"' && str[1] != '\0' && str[strlen(str) - 1] == '"') return 1;
+	if (strlen(str) >= 2 && str[0] == '"' && str[strlen(str) - 1] == '"') return 1;
 
 	// Check for dangling quotes
 	if (str[0] == '"' || str[strlen(str) - 1] == '"') return -1;
@@ -93,19 +92,17 @@ int check_body_inc(char* str, struct linkedlist* list, int isquoted[], int count
 	if (isquoted[counter] == 0) {
 		// Make sure str is not quoted
 		int quoted = check_quoted(str);
-		// TODO Commented out for testing (is this necessary?)
-		 if (quoted != 0) return -1;
+		if (quoted != 0) return -1;
 	} else if(isquoted[counter] == 1) {
 		// Make sure str is quoted as well
 		int quoted = check_quoted(str);
-		// TODO Commented out for testing
-		 if (quoted != 1) return -1;
+		if (quoted != 1) return -1;
 	} else {
 		return -1;
 	}
+
 	if (counter == name_loc) {
-		// If name column, may or may not be quoted
-		char cur_name[LINE_MAX];
+		char cur_name[LINE_MAX + 1];
 		strcpy_unquoted(cur_name, str, check_quoted(str));
 		linkedlist_inc(list, cur_name);
 		return 0;
@@ -120,13 +117,8 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 	if (line == NULL) {
 		return -1;
 	}
-	if (strlen(line) > 2 * LINE_MAX) { //the length of line shouldn't exceed 1024
-		return -1;
-	}
 
 	int counter = 0;
-	char buf[2 * LINE_MAX];
-	char elements[2 * LINE_MAX][2 * LINE_MAX];
 	char* p;
 
 	p = strtok(line, ",");
@@ -141,6 +133,7 @@ int parse_line(char* line, struct linkedlist* list, int name_loc, int isquoted[]
 		if (check_body_inc(p, list, isquoted, counter, name_loc) == -1) return -1;
 		counter++;
 	}
+
 	return 0;
 }
 
@@ -148,6 +141,7 @@ int insert_space(char* line){
 	if (strlen(line) > LINE_MAX) { //the length of line shouldn't exceed 1024
 		return -1;
 	}
+
 	for (int i = 1; i < strlen(line); i++) {
 		if (line[i-1] == ',' && line[i] == ',') {
 			if (i + 1 >= strlen(line)) {
@@ -173,9 +167,7 @@ int get_name_location(char* header) {
 	if(header == NULL){
 		return -1;
 	}
-	if(strlen(header) > LINE_MAX){ //the length of header shouldn't exceed 1024
-		return -1;
-	}
+
 	int comma_count = 0;
 	for (int i = 0; i < LINE_MAX; i++) {
 		if (header[i] == '\0') return -1;
@@ -193,10 +185,13 @@ int header_check(char* header, int isquoted[]){
 	if(header == NULL){
 		return -1;
 	}
+	if (strlen(header) > LINE_MAX) { //the length of line shouldn't exceed 1024
+		return -1;
+	}
 
 	int counter = 0;
-	char columns[LINE_MAX][LINE_MAX];
-	char headercp[LINE_MAX+LINE_PAD];
+	char columns[LINE_MAX][LINE_MAX + 1];
+	char headercp[LINE_MAX + 1];
 	char* p;
 
 	strcpy(headercp,header);
@@ -246,7 +241,7 @@ void sortlist(struct linkedlist* list){
 
 		// Swap
 		int temp = current->count;
-		char temp_name[LINE_MAX];
+		char temp_name[LINE_MAX + 1];
 		strcpy(temp_name, current->name);
 		current->count = prevmax->count;
 		strcpy(current->name, prevmax->name);
@@ -280,14 +275,14 @@ int main(int argc, char** argv) {
 	}
 
 	// Parse header
-	char line[LINE_MAX+LINE_PAD];
+	char line[2*LINE_MAX];
 	int isquoted[LINE_MAX];
 	//isquoted = 1 -> quoted
 	//isquoted = 0 -> not quoted
 	//isquoted = -1 -> out of range
 	memset(isquoted, -1, LINE_MAX);
 
-	fgets(line, LINE_MAX + LINE_PAD, csv);
+	fgets(line, 2*LINE_MAX, csv);
 	rem_newline(line);
 
 	// Check for valid header
@@ -308,7 +303,7 @@ int main(int argc, char** argv) {
 	int linecount = 1;
 
 	// Add each line to list
-	while (fgets(line, LINE_MAX + LINE_PAD, csv) != NULL) {
+	while (fgets(line, 2*LINE_MAX, csv) != NULL) {
 		rem_newline(line);
 		if(insert_space(line) == -1){
 			printf("Invalid Input Format\n");
@@ -321,7 +316,7 @@ int main(int argc, char** argv) {
 		linecount++;
 	}
 
-	if(linecount > NUM_LINE_MAX){ //length of the file shouldn't exceed 20000 lines
+	if (linecount > NUM_LINE_MAX) { //length of the file shouldn't exceed 20000 lines
 		printf("Invalid Input Format\n");
 		return -1;
 	}
